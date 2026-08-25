@@ -37,6 +37,13 @@ $ ansi-explain build.log
 Plain text between sequences is skipped in the output; only the escape
 sequences themselves are reported.
 
+Pass `-hex` to also print each sequence's raw bytes:
+
+```
+$ printf '\033[31m' | ansi-explain -hex
+"\x1b[31m"  1b 5b 33 31 6d  select graphic rendition (SGR) (foreground red)
+```
+
 ## How it's built
 
 The parsing and explanation logic (`token.go`, `explain.go`) is plain

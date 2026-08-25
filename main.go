@@ -1,10 +1,14 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
 )
+
+const usage = "usage: ansi-explain [-hex] [file]"
 
 func main() {
 	if err := run(os.Args[1:], os.Stdin, os.Stdout); err != nil {
@@ -14,17 +18,24 @@ func main() {
 }
 
 // run holds all of the program's I/O so main stays a thin wrapper. With no
-// arguments it reads standard input; with one argument it reads that file.
+// file argument it reads standard input; with one it reads that file.
 func run(args []string, stdin io.Reader, stdout io.Writer) error {
+	fs := flag.NewFlagSet("ansi-explain", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	showHex := fs.Bool("hex", false, "show each sequence's raw bytes as hex alongside the quoted text")
+	if err := fs.Parse(args); err != nil {
+		return errors.New(usage)
+	}
+
 	var data []byte
 	var err error
-	switch len(args) {
+	switch fs.NArg() {
 	case 0:
 		data, err = io.ReadAll(stdin)
 	case 1:
-		data, err = os.ReadFile(args[0])
+		data, err = os.ReadFile(fs.Arg(0))
 	default:
-		return fmt.Errorf("usage: ansi-explain [file]")
+		return errors.New(usage)
 	}
 	if err != nil {
 		return err
@@ -34,10 +45,14 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 			continue
 		}
 		exp := Explain(tok)
+		text := fmt.Sprintf("%q", tok.Text)
+		if *showHex {
+			text += "  " + fmt.Sprintf("% x", tok.Text)
+		}
 		if exp.Detail != "" {
-			fmt.Fprintf(stdout, "%q  %s (%s)\n", tok.Text, exp.Summary, exp.Detail)
+			fmt.Fprintf(stdout, "%s  %s (%s)\n", text, exp.Summary, exp.Detail)
 		} else {
-			fmt.Fprintf(stdout, "%q  %s\n", tok.Text, exp.Summary)
+			fmt.Fprintf(stdout, "%s  %s\n", text, exp.Summary)
 		}
 	}
 	return nil
