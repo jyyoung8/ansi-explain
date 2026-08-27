@@ -62,15 +62,58 @@ func explainCSI(t Token) Explanation {
 	if len(t.Params) == 0 {
 		return Explanation{Summary: name, Detail: sgrNames[0]}
 	}
-	parts := make([]string, 0, len(t.Params))
-	for _, p := range t.Params {
+	return Explanation{Summary: name, Detail: joinComma(sgrParts(t.Params))}
+}
+
+// sgrParts turns a full list of SGR parameters into descriptions, expanding
+// the extended color forms (38/48 ; 5 ; n and 38/48 ; 2 ; r ; g ; b) into a
+// single entry each instead of one entry per raw number.
+func sgrParts(params []int) []string {
+	parts := make([]string, 0, len(params))
+	for i := 0; i < len(params); i++ {
+		p := params[i]
+		if p == 38 || p == 48 {
+			if part, consumed := sgrExtendedColor(p, params[i+1:]); consumed > 0 {
+				parts = append(parts, part)
+				i += consumed
+				continue
+			}
+		}
 		if n, ok := sgrNames[p]; ok {
 			parts = append(parts, n)
 		} else {
 			parts = append(parts, fmt.Sprintf("code %d", p))
 		}
 	}
-	return Explanation{Summary: name, Detail: joinComma(parts)}
+	return parts
+}
+
+// sgrExtendedColor parses the arguments following an SGR 38 (foreground) or
+// 48 (background) code. rest is every parameter after that code. It returns
+// the description and the number of elements of rest it consumed, or 0 if
+// rest does not hold a recognized color mode.
+func sgrExtendedColor(code int, rest []int) (string, int) {
+	layer := "foreground"
+	if code == 48 {
+		layer = "background"
+	}
+	if len(rest) == 0 {
+		return "", 0
+	}
+	switch rest[0] {
+	case 5:
+		if len(rest) < 2 {
+			return "", 0
+		}
+		return fmt.Sprintf("%s color %d (256-color)", layer, rest[1]), 2
+	case 2:
+		if len(rest) < 4 {
+			return "", 0
+		}
+		return fmt.Sprintf("%s RGB(%d,%d,%d)", layer, rest[1], rest[2], rest[3]), 4
+	default:
+		return "", 0
+	}
 }
 
 func joinComma(parts []string) string {
