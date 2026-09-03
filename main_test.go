@@ -33,6 +33,18 @@ func TestRunHexFlag(t *testing.T) {
 	}
 }
 
+func TestRunStripFlag(t *testing.T) {
+	var out bytes.Buffer
+	in := strings.NewReader("\x1b[31mred\x1b[0m and \x1b]0;title\x07plain")
+	if err := run([]string{"-strip"}, in, &out); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	got := out.String()
+	if want := "red and plain"; got != want {
+		t.Fatalf("stripped output = %q, want %q", got, want)
+	}
+}
+
 func TestRunTooManyArgs(t *testing.T) {
 	var out bytes.Buffer
 	err := run([]string{"a", "b"}, strings.NewReader(""), &out)

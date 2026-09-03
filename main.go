@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-const usage = "usage: ansi-explain [-hex] [file]"
+const usage = "usage: ansi-explain [-hex] [-strip] [file]"
 
 func main() {
 	if err := run(os.Args[1:], os.Stdin, os.Stdout); err != nil {
@@ -23,6 +23,7 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	fs := flag.NewFlagSet("ansi-explain", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	showHex := fs.Bool("hex", false, "show each sequence's raw bytes as hex alongside the quoted text")
+	strip := fs.Bool("strip", false, "remove escape sequences and print the remaining plain text, instead of explaining them")
 	if err := fs.Parse(args); err != nil {
 		return errors.New(usage)
 	}
@@ -40,6 +41,16 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+
+	if *strip {
+		for _, tok := range Tokenize(data) {
+			if tok.Kind == TokenText {
+				stdout.Write(tok.Text)
+			}
+		}
+		return nil
+	}
+
 	for _, tok := range Tokenize(data) {
 		if tok.Kind == TokenText {
 			continue

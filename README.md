@@ -44,6 +44,14 @@ $ printf '\033[31m' | ansi-explain -hex
 "\x1b[31m"  1b 5b 33 31 6d  select graphic rendition (SGR) (foreground red)
 ```
 
+Pass `-strip` to skip the explanations and print the plain text with every
+escape sequence removed instead:
+
+```
+$ printf '\033[31mhello\033[0m\n' | ansi-explain -strip
+hello
+```
+
 ## How it's built
 
 The parsing and explanation logic (`token.go`, `explain.go`) is plain
