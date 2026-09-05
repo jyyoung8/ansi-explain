@@ -15,6 +15,7 @@ const (
 	TokenText    TokenKind = iota // plain, non-escape bytes
 	TokenCSI                      // ESC [ params... final
 	TokenOSC                      // ESC ] ... BEL or ESC \
+	TokenDCS                      // ESC P ... ST (ESC \)
 	TokenSimple                   // ESC followed by exactly one byte
 	TokenUnknown                  // ESC introduced something we could not parse
 )
@@ -57,6 +58,8 @@ func parseEscape(input []byte) (Token, int) {
 		return parseCSI(input)
 	case ']':
 		return parseOSC(input)
+	case 'P':
+		return parseDCS(input)
 	default:
 		return Token{Kind: TokenSimple, Text: input[:2], Final: input[1]}, 2
 	}
@@ -96,6 +99,21 @@ func parseOSC(input []byte) (Token, int) {
 		}
 		if input[i] == esc && i+1 < len(input) && input[i+1] == '\\' {
 			return Token{Kind: TokenOSC, Text: input[:i+2]}, i + 2
+		}
+		i++
+	}
+	return Token{Kind: TokenUnknown, Text: input}, len(input)
+}
+
+// parseDCS parses "ESC P ... ST", where ST is the two-byte string
+// terminator ESC \. Unlike OSC, DCS is not terminated by a bare BEL: DCS
+// payloads (e.g. Sixel graphics, terminfo queries) can legitimately contain
+// 0x07 as data.
+func parseDCS(input []byte) (Token, int) {
+	i := 2
+	for i < len(input) {
+		if input[i] == esc && i+1 < len(input) && input[i+1] == '\\' {
+			return Token{Kind: TokenDCS, Text: input[:i+2]}, i + 2
 		}
 		i++
 	}

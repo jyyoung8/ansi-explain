@@ -41,6 +41,8 @@ func Explain(t Token) Explanation {
 		return explainCSI(t)
 	case TokenOSC:
 		return Explanation{Summary: "OSC (operating system command)", Detail: fmt.Sprintf("%q", t.Text)}
+	case TokenDCS:
+		return Explanation{Summary: "DCS (device control string)", Detail: fmt.Sprintf("%q", t.Text)}
 	case TokenSimple:
 		if name, ok := simpleFinalNames[t.Final]; ok {
 			return Explanation{Summary: name}

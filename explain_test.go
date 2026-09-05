@@ -29,6 +29,14 @@ func TestExplainSGRExtendedColorThenMoreParams(t *testing.T) {
 	}
 }
 
+func TestExplainDCS(t *testing.T) {
+	tok := Token{Kind: TokenDCS, Text: []byte("\x1bPq...\x1b\\")}
+	exp := Explain(tok)
+	if exp.Summary != "DCS (device control string)" {
+		t.Fatalf("summary = %q, want DCS summary", exp.Summary)
+	}
+}
+
 func TestExplainSGRExtendedColorMissingArgs(t *testing.T) {
 	tok := Token{Kind: TokenCSI, Final: 'm', Params: []int{38, 5}}
 	exp := Explain(tok)

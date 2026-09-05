@@ -29,6 +29,37 @@ func TestTokenizeSGR(t *testing.T) {
 	}
 }
 
+func TestTokenizeDCS(t *testing.T) {
+	input := []byte("\x1bPq#0;2;0;0;0#1~~@@vv@@~~@@~~$#1~~@@\x1b\\")
+	tokens := Tokenize(input)
+	if len(tokens) != 1 || tokens[0].Kind != TokenDCS {
+		t.Fatalf("got %+v, want single DCS token", tokens)
+	}
+	if string(tokens[0].Text) != string(input) {
+		t.Fatalf("text = %q, want %q", tokens[0].Text, input)
+	}
+}
+
+func TestTokenizeDCSDoesNotStopAtBEL(t *testing.T) {
+	// DCS payloads may contain a raw BEL byte; only ESC \ ends the sequence.
+	input := []byte("\x1bPabc\x07def\x1b\\")
+	tokens := Tokenize(input)
+	if len(tokens) != 1 || tokens[0].Kind != TokenDCS {
+		t.Fatalf("got %+v, want single DCS token", tokens)
+	}
+	if len(tokens[0].Text) != len(input) {
+		t.Fatalf("text = %q, want it to span the whole input", tokens[0].Text)
+	}
+}
+
+func TestTokenizeDCSUnterminated(t *testing.T) {
+	input := []byte("\x1bPq#0;2;0;0")
+	tokens := Tokenize(input)
+	if len(tokens) != 1 || tokens[0].Kind != TokenUnknown {
+		t.Fatalf("got %+v, want single unknown token", tokens)
+	}
+}
+
 func TestParseParamsEmptyField(t *testing.T) {
 	got := parseParams([]byte("1;;3"))
 	want := []int{1, 0, 3}
