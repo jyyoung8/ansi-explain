@@ -23,6 +23,25 @@ var csiFinalNames = map[byte]string{
 	'A': "cursor up", 'B': "cursor down", 'C': "cursor forward", 'D': "cursor back",
 	'H': "cursor position", 'J': "erase in display", 'K': "erase in line",
 	'm': "select graphic rendition (SGR)",
+	'h': "set mode", 'l': "reset mode",
+}
+
+// decPrivateModes names the DEC private modes (CSI ? ... h/l) that real
+// terminal programs toggle constantly: vim and tmux alone account for most
+// of these on every screen redraw or mode switch.
+var decPrivateModes = map[int]string{
+	1:    "application cursor keys",
+	7:    "auto-wrap",
+	12:   "cursor blinking",
+	25:   "cursor visibility",
+	47:   "alternate screen buffer",
+	1000: "mouse tracking (X11)",
+	1002: "mouse tracking (button-event)",
+	1006: "mouse tracking (SGR extended)",
+	1047: "alternate screen buffer",
+	1048: "save/restore cursor",
+	1049: "alternate screen buffer with cursor save",
+	2004: "bracketed paste mode",
 }
 
 var simpleFinalNames = map[byte]string{
@@ -54,6 +73,9 @@ func Explain(t Token) Explanation {
 }
 
 func explainCSI(t Token) Explanation {
+	if t.Private && (t.Final == 'h' || t.Final == 'l') {
+		return explainDECPrivateMode(t)
+	}
 	name, ok := csiFinalNames[t.Final]
 	if !ok {
 		return Explanation{Summary: fmt.Sprintf("CSI ... %c (unrecognized)", t.Final), Detail: fmt.Sprintf("%q", t.Text)}
@@ -65,6 +87,29 @@ func explainCSI(t Token) Explanation {
 		return Explanation{Summary: name, Detail: sgrNames[0]}
 	}
 	return Explanation{Summary: name, Detail: joinComma(sgrParts(t.Params))}
+}
+
+// explainDECPrivateMode describes a CSI ? ... h (set) or CSI ? ... l (reset)
+// sequence. Terminals encode several unrelated modes in one sequence (as in
+// tmux's "\x1b[?1049h\x1b[?1h" pairing), so every param is named separately.
+func explainDECPrivateMode(t Token) Explanation {
+	action := "enable"
+	if t.Final == 'l' {
+		action = "disable"
+	}
+	summary := fmt.Sprintf("%s DEC private mode", action)
+	if len(t.Params) == 0 {
+		return Explanation{Summary: summary}
+	}
+	parts := make([]string, 0, len(t.Params))
+	for _, p := range t.Params {
+		if name, ok := decPrivateModes[p]; ok {
+			parts = append(parts, name)
+		} else {
+			parts = append(parts, fmt.Sprintf("mode %d", p))
+		}
+	}
+	return Explanation{Summary: summary, Detail: joinComma(parts)}
 }
 
 // sgrParts turns a full list of SGR parameters into descriptions, expanding

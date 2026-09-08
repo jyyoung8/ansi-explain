@@ -60,6 +60,31 @@ func TestTokenizeDCSUnterminated(t *testing.T) {
 	}
 }
 
+func TestTokenizeDECPrivateMode(t *testing.T) {
+	input := []byte("\x1b[?1049h")
+	tokens := Tokenize(input)
+	if len(tokens) != 1 || tokens[0].Kind != TokenCSI {
+		t.Fatalf("got %+v, want single CSI token", tokens)
+	}
+	tok := tokens[0]
+	if !tok.Private {
+		t.Fatalf("token = %+v, want Private set", tok)
+	}
+	if !reflect.DeepEqual(tok.Params, []int{1049}) {
+		t.Fatalf("params = %v, want [1049]", tok.Params)
+	}
+	if tok.Final != 'h' {
+		t.Fatalf("final = %q, want 'h'", tok.Final)
+	}
+}
+
+func TestTokenizeCSIWithoutPrivateMarkerIsNotPrivate(t *testing.T) {
+	tokens := Tokenize([]byte("\x1b[4h"))
+	if len(tokens) != 1 || tokens[0].Private {
+		t.Fatalf("got %+v, want non-private CSI token", tokens)
+	}
+}
+
 func TestParseParamsEmptyField(t *testing.T) {
 	got := parseParams([]byte("1;;3"))
 	want := []int{1, 0, 3}

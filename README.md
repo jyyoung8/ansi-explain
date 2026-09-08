@@ -63,7 +63,11 @@ is the only file that reads stdin or files.
 Currently understood:
 
 - CSI sequences (`ESC [ ... final`), including SGR color/style codes
+- DEC private mode toggles (`ESC [ ? ... h/l`), like the alternate screen,
+  cursor visibility, and bracketed paste sequences vim and tmux send on
+  every mode switch
 - OSC sequences (`ESC ] ... BEL` or `ESC ] ... ST`)
+- DCS sequences (`ESC P ... ST`)
 - Single-byte ESC sequences like save/restore cursor and terminal reset
 
 Unrecognized sequences are still tokenized and reported, just without a

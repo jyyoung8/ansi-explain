@@ -3,10 +3,11 @@ package main
 // Token is a single unit found in a byte stream: either a run of plain
 // bytes or a parsed escape sequence.
 type Token struct {
-	Kind   TokenKind
-	Text   []byte // raw bytes that make up this token
-	Final  byte   // final byte of a CSI or simple sequence; 0 if not applicable
-	Params []int  // numeric parameters parsed from a CSI sequence
+	Kind    TokenKind
+	Text    []byte // raw bytes that make up this token
+	Final   byte   // final byte of a CSI or simple sequence; 0 if not applicable
+	Params  []int  // numeric parameters parsed from a CSI sequence
+	Private bool   // CSI carried a leading '?', marking a DEC private sequence
 }
 
 type TokenKind int
@@ -66,13 +67,21 @@ func parseEscape(input []byte) (Token, int) {
 }
 
 // parseCSI parses "ESC [ params intermediates final" per ECMA-48: params
-// occupy 0x30-0x3F, intermediates 0x20-0x2F, and the final byte 0x40-0x7E.
+// occupy 0x30-0x3F, intermediates 0x20-0x2F, and the final byte 0x40-0x7E. A
+// leading '?' among the params marks a DEC private sequence (e.g. the
+// cursor-visibility and alternate-screen toggles terminals send constantly)
+// rather than a standard ECMA-48 one; it is stripped before the numeric
+// params are parsed and recorded on the token instead.
 func parseCSI(input []byte) (Token, int) {
 	i := 2
 	for i < len(input) && input[i] >= 0x30 && input[i] <= 0x3F {
 		i++
 	}
 	paramBytes := input[2:i]
+	private := len(paramBytes) > 0 && paramBytes[0] == '?'
+	if private {
+		paramBytes = paramBytes[1:]
+	}
 	for i < len(input) && input[i] >= 0x20 && input[i] <= 0x2F {
 		i++
 	}
@@ -82,10 +91,11 @@ func parseCSI(input []byte) (Token, int) {
 	final := input[i]
 	i++
 	return Token{
-		Kind:   TokenCSI,
-		Text:   input[:i],
-		Final:  final,
-		Params: parseParams(paramBytes),
+		Kind:    TokenCSI,
+		Text:    input[:i],
+		Final:   final,
+		Params:  parseParams(paramBytes),
+		Private: private,
 	}, i
 }
 
