@@ -52,6 +52,16 @@ $ printf '\033[31mhello\033[0m\n' | ansi-explain -strip
 hello
 ```
 
+Pass `-version` to print the build version and exit.
+
+## Releasing
+
+`make build` produces a static binary for the current platform. `make
+release` cross-compiles one for each of linux/darwin on amd64/arm64 plus
+windows/amd64, with `CGO_ENABLED=0` so none of them link against a system
+libc, and drops them in `dist/`. Both embed the version from `git describe`
+(override with `make release VERSION=v1.2.3`).
+
 ## How it's built
 
 The parsing and explanation logic (`token.go`, `explain.go`) is plain

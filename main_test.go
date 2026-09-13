@@ -45,6 +45,16 @@ func TestRunStripFlag(t *testing.T) {
 	}
 }
 
+func TestRunVersionFlag(t *testing.T) {
+	var out bytes.Buffer
+	if err := run([]string{"-version"}, strings.NewReader(""), &out); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if got := out.String(); got != version+"\n" {
+		t.Fatalf("output = %q, want %q", got, version+"\n")
+	}
+}
+
 func TestRunTooManyArgs(t *testing.T) {
 	var out bytes.Buffer
 	err := run([]string{"a", "b"}, strings.NewReader(""), &out)

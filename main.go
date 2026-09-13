@@ -8,7 +8,11 @@ import (
 	"os"
 )
 
-const usage = "usage: ansi-explain [-hex] [-strip] [file]"
+const usage = "usage: ansi-explain [-hex] [-strip] [-version] [file]"
+
+// version is overwritten at build time via -ldflags "-X main.version=...".
+// A checkout built with plain "go build" reports "dev".
+var version = "dev"
 
 func main() {
 	if err := run(os.Args[1:], os.Stdin, os.Stdout); err != nil {
@@ -24,8 +28,14 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	fs.SetOutput(io.Discard)
 	showHex := fs.Bool("hex", false, "show each sequence's raw bytes as hex alongside the quoted text")
 	strip := fs.Bool("strip", false, "remove escape sequences and print the remaining plain text, instead of explaining them")
+	showVersion := fs.Bool("version", false, "print the version and exit")
 	if err := fs.Parse(args); err != nil {
 		return errors.New(usage)
+	}
+
+	if *showVersion {
+		fmt.Fprintln(stdout, version)
+		return nil
 	}
 
 	var data []byte
